@@ -1,36 +1,41 @@
 version: "3.8"
-
 services:
-  rag:
-    build: .
-    container_name: rag-service
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  ingestion_service:
+    build: ./ingestion_service
+    container_name: ingestion_service
+    env_file: .env
+    ports:
+      - "8001:8000"
+    depends_on:
+      - chromadb
+      - postgres
+
+  retrieval_service:
+    build: ./retrieval_service
+    container_name: retrieval_service
     env_file: .env
     ports:
       - "8000:8000"
     depends_on:
       - chromadb
-      - llm
+      - postgres
 
   chromadb:
     image: ghcr.io/chroma-db/chroma:latest
     container_name: chromadb
     ports:
-      - "8001:8000"
+      - "8002:8000"
     environment:
       - CHROMADB_SETTING=example
 
-  llm:
-    image: huggingface/transformers-pytorch-cpu
-    container_name: llm-service
-    volumes:
-      - ./models:/models
+  postgres:
+    image: postgres:14
+    container_name: postgres
     environment:
-      - MODEL_NAME=mistralai/Mistral-7B-Instruct
-    command: ["python", "-m", "transformers.serving", "--model-id", "${MODEL_NAME}", "--device", "cpu"]
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: document_db
     ports:
-      - "5000:5000"
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
