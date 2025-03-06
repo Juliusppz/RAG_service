@@ -1,0 +1,7 @@
+version: "3.8"
+services:
+  ingestion_service:
+    image: gcr.io/${GCP_PROJECT}/rag-service-ingestion:latest
+
+  retrieval_service:
+    image: gcr.io/${GCP_PROJECT}/rag-service-retrieval:latest

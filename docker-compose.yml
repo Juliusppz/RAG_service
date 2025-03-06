@@ -1,7 +1,6 @@
 version: "3.8"
 services:
   ingestion_service:
-    build: ./ingestion_service
     container_name: ingestion_service
     env_file: .env
     ports:
@@ -11,7 +10,6 @@ services:
       - postgres
 
   retrieval_service:
-    build: ./retrieval_service
     container_name: retrieval_service
     env_file: .env
     ports:

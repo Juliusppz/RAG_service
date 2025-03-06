@@ -1,0 +1,48 @@
+name: Deploy RAG Service
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout RAG Service Code
+        uses: actions/checkout@v3
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Set up Docker
+        run: |
+          sudo apt update
+          sudo apt install -y docker.io
+
+      - name: Build and Push Ingestion Service Docker Image
+        run: |
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT }}/rag-service-ingestion:${{ github.ref_name }} -f ingestion_service/Dockerfile .
+          docker push gcr.io/${{ secrets.GCP_PROJECT }}/rag-service-ingestion:${{ github.ref_name }}
+          # Optionally tag as 'latest'
+          docker tag gcr.io/${{ secrets.GCP_PROJECT }}/rag-service-ingestion:${{ github.ref_name }} gcr.io/${{ secrets.GCP_PROJECT }}/rag-service-ingestion:latest
+          docker push gcr.io/${{ secrets.GCP_PROJECT }}/rag-service-ingestion:latest
+
+      - name: Build and Push Retrieval Service Docker Image
+        run: |
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT }}/rag-service-retrieval:${{ github.ref_name }} -f retrieval_service/Dockerfile .
+          docker push gcr.io/${{ secrets.GCP_PROJECT }}/rag-service-retrieval:${{ github.ref_name }}
+          # Optionally tag as 'latest'
+          docker tag gcr.io/${{ secrets.GCP_PROJECT }}/rag-service-retrieval:${{ github.ref_name }} gcr.io/${{ secrets.GCP_PROJECT }}/rag-service-retrieval:latest
+          docker push gcr.io/${{ secrets.GCP_PROJECT }}/rag-service-retrieval:latest
+
+      - name: Trigger Ansible Deployment
+        run: |
+          curl -X POST -H "Authorization: token ${{ secrets.GH_PAT }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/Juliusppz/ansible_repo/actions/workflows/deploy.yml/dispatches \
+          -d '{"ref":"main"}'
